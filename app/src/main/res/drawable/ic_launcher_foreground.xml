@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A vinyl record: black disc, groove rings, red label, spindle hole -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF1B1B1B"
+        android:pathData="M54,24a30,30 0 1,0 0.01,0z" />
+    <path
+        android:strokeColor="#FF3A3A3A"
+        android:strokeWidth="1"
+        android:pathData="M54,29a25,25 0 1,0 0.01,0z" />
+    <path
+        android:strokeColor="#FF3A3A3A"
+        android:strokeWidth="1"
+        android:pathData="M54,34a20,20 0 1,0 0.01,0z" />
+    <path
+        android:fillColor="#FFC62828"
+        android:pathData="M54,43a11,11 0 1,0 0.01,0z" />
+    <path
+        android:fillColor="#FFE8A33D"
+        android:pathData="M54,51.5a2.5,2.5 0 1,0 0.01,0z" />
+</vector>
