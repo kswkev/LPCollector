@@ -22,7 +22,7 @@ A release belongs to at most one list. Adding a wishlisted release to your colle
 
 ## Getting started
 
-1. Install `dist/LPCollector.apk` on your phone. You need to allow installing apps from unknown sources.
+1. Download the APK from the [Releases](https://github.com/kswkev/LPCollector/releases) page and install it on your phone. You need to allow installing apps from unknown sources.
 2. Get a token: log in at discogs.com, open **Settings → Developers** (<https://www.discogs.com/settings/developers>) and click **Generate new token**.
 3. In the app, open **Settings** (gear icon on the Collection or Wishlist tab), paste the token and tap **Save token**.
 4. Go to the **Search** tab and start adding records.
