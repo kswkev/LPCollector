@@ -17,6 +17,7 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat assembleRelease    # R8-minified; signed only if keystore.properties exists
 ```
 
+- Branching: do all work on `develop` and push to `origin/develop`. Never commit directly to `main`. When a piece of work is finished, open a PR from `develop` to `main`. Because `gh` isn't installed, create it with the GitHub REST API (`POST /repos/kswkev/LPCollector/pulls`, head `develop`, base `main`) using the token from `git credential fill`. Tag releases on `main` after the release PR is merged.
 - `local.properties` (sdk.dir) and `keystore.properties` + `keystore/lpcollector.jks` are git-ignored. `keystore.properties` holds the release signing key and its password. Never regenerate or replace it: an APK signed with a different key can't be installed over the existing app, and uninstalling first deletes the user's on-device collection.
 - Releases: bump `versionCode` and `versionName` in `app/build.gradle.kts`, build the release APK, copy it to `dist/` (git-ignored), then tag `vX.Y.Z` and attach the APK to a GitHub release on `kswkev/LPCollector`. `gh` is not installed. v1.0.0 was published by calling the GitHub REST API with the token from `git credential fill`.
 - Build setup: AGP 9.x with **built-in Kotlin**. Don't apply `org.jetbrains.kotlin.android`; only the Compose and serialization Kotlin plugins are applied. compileSdk/targetSdk 37, minSdk 26. Versions live in `gradle/libs.versions.toml`.
