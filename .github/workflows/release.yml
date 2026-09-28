@@ -1,0 +1,104 @@
+name: Release
+
+# Runs when a PR is merged into main. Publishes a signed APK as release vX.Y.Z, where X.Y.Z is
+# versionName from app/build.gradle.kts. If that tag already exists (version wasn't bumped),
+# nothing is released.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # SHA-256 of the release signing certificate. APKs signed with any other key can't be
+      # installed over the existing app, so refuse to publish them.
+      EXPECTED_CERT_SHA256: 2a336a42f0a3cd923aa3d5bc277b522c11f793ceb95136e887e0853622fe9344
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(sed -nE 's/^\s*versionName\s*=\s*"([^"]+)".*/\1/p' app/build.gradle.kts)
+          if [ -z "$version" ]; then echo "::error::versionName not found in app/build.gradle.kts"; exit 1; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
+            echo "Tag v$version already exists; bump versionName/versionCode to release. Skipping."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v5
+        if: steps.version.outputs.exists == 'false'
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v5
+        if: steps.version.outputs.exists == 'false'
+
+      - name: Set up signing key
+        if: steps.version.outputs.exists == 'false'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for s in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!s}" ]; then echo "::error::Missing repository secret $s"; exit 1; fi
+          done
+          mkdir -p keystore
+          echo "$KEYSTORE_BASE64" | base64 --decode > keystore/lpcollector.jks
+          cat > keystore.properties <<EOF
+          storeFile=keystore/lpcollector.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Unit tests
+        if: steps.version.outputs.exists == 'false'
+        run: ./gradlew testDebugUnitTest
+
+      - name: Build release APK
+        if: steps.version.outputs.exists == 'false'
+        run: ./gradlew assembleRelease
+
+      - name: Verify signing certificate
+        if: steps.version.outputs.exists == 'false'
+        run: |
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          actual=$("$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk \
+            | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-f]+)$/\1/p')
+          if [ "$actual" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::APK signed with unexpected certificate ($actual)"; exit 1
+          fi
+
+      - name: Create tag and GitHub release
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          apk="LPCollector-$VERSION.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$apk"
+          gh release create "v$VERSION" "$apk" \
+            --target "$GITHUB_SHA" \
+            --title "LP Collector $VERSION" \
+            --generate-notes
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f keystore.properties keystore/lpcollector.jks
